@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__desktop-commander__list_directory",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm add:*)",
+      "Bash(CI=true pnpm install:*)",
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
