@@ -336,6 +336,7 @@ interface BubbleViewProps {
   size: number;
 }
 
+// 计算可用性百分比
 function calcAvailability(timeline: TimelineItem[]): number {
   if (!timeline || timeline.length === 0) return 0;
   const total = timeline.reduce((sum, t) => sum + t.availability, 0);
@@ -355,8 +356,12 @@ function BubbleView({ provider, onExpand, size }: BubbleViewProps) {
 
   if (!provider) {
     return (
-      <div className="bubble-container">
-        <div className="bubble" style={{ width: bubbleSize, height: bubbleSize }} onClick={onExpand}>
+      <div className="bubble-container bubble-passthrough">
+        <div
+          className="bubble bubble-interactive"
+          style={{ width: bubbleSize, height: bubbleSize }}
+          onClick={onExpand}
+        >
           <span className="bubble-text" style={{ fontSize: fontSizes.unknown }}>?</span>
         </div>
       </div>
@@ -368,8 +373,12 @@ function BubbleView({ provider, onExpand, size }: BubbleViewProps) {
   const waterLevel = availability;
 
   return (
-    <div className="bubble-container">
-      <div className={`bubble ${isUp ? "up" : "down"}`} style={{ width: bubbleSize, height: bubbleSize }} onClick={onExpand}>
+    <div className="bubble-container bubble-passthrough">
+      <div
+        className={`bubble bubble-interactive ${isUp ? "up" : "down"}`}
+        style={{ width: bubbleSize, height: bubbleSize }}
+        onClick={onExpand}
+      >
         <div className="bubble-wave" style={{ "--water-level": `${100 - waterLevel}%` } as React.CSSProperties}>
           <div className="wave wave1"></div>
           <div className="wave wave2"></div>
@@ -434,15 +443,19 @@ function App() {
       isFirstRender.current = false;
       return;
     }
+
     async function handleWindowChange() {
       const win = getCurrentWindow();
       const { LogicalSize, LogicalPosition } = await import("@tauri-apps/api/dpi");
       const store = await getStore();
-      const scaleFactor = await win.scaleFactor();
 
-      // 获取当前窗口状态（物理像素转逻辑像素）
-      const currentSize = await win.innerSize();
-      const currentPos = await win.outerPosition();
+      // 并行获取当前窗口状态
+      const [scaleFactor, currentSize, currentPos] = await Promise.all([
+        win.scaleFactor(),
+        win.innerSize(),
+        win.outerPosition(),
+      ]);
+
       const currentState = {
         x: Math.round(currentPos.x / scaleFactor),
         y: Math.round(currentPos.y / scaleFactor),
@@ -450,38 +463,47 @@ function App() {
         height: Math.round(currentSize.height / scaleFactor),
       };
 
-      console.log("Current state:", currentState, "Scale factor:", scaleFactor);
-
       if (bubbleConfig.enabled) {
-        // 切换到悬浮球模式：保存卡片位置，恢复悬浮球位置
-        await store.set("cardWindowState", currentState);
-        console.log("Saved card state:", currentState);
-
+        // 从卡片切换到悬浮球
         const bubbleState = await store.get<{ x: number; y: number }>("bubbleWindowState");
-        console.log("Restoring bubble state:", bubbleState);
 
+        // 并行执行存储和窗口操作
+        await Promise.all([
+          store.set("cardWindowState", currentState),
+          win.setSkipTaskbar(true),
+        ]);
+
+        // 设置悬浮球大小和位置
         await win.setSize(new LogicalSize(bubbleConfig.size, bubbleConfig.size));
-        if (bubbleState) {
+
+        if (bubbleState && bubbleState.x !== undefined && bubbleState.y !== undefined) {
           await win.setPosition(new LogicalPosition(bubbleState.x, bubbleState.y));
         }
       } else {
-        // 切换到卡片模式：保存悬浮球位置，恢复卡片位置
-        await store.set("bubbleWindowState", { x: currentState.x, y: currentState.y });
-        console.log("Saved bubble state:", { x: currentState.x, y: currentState.y });
-
+        // 从悬浮球切换到卡片
         const cardState = await store.get<{ x: number; y: number; width: number; height: number }>("cardWindowState");
-        console.log("Restoring card state:", cardState);
 
-        if (cardState) {
+        // 并行执行存储和窗口操作
+        await Promise.all([
+          store.set("bubbleWindowState", { x: currentState.x, y: currentState.y }),
+          win.setSkipTaskbar(false),
+        ]);
+
+        // 设置卡片大小和位置
+        if (cardState && cardState.width && cardState.height) {
           await win.setSize(new LogicalSize(cardState.width, cardState.height));
-          await win.setPosition(new LogicalPosition(cardState.x, cardState.y));
+
+          if (cardState.x !== undefined && cardState.y !== undefined) {
+            await win.setPosition(new LogicalPosition(cardState.x, cardState.y));
+          }
         } else {
           await win.setSize(new LogicalSize(520, 320));
         }
       }
     }
+
     handleWindowChange();
-  }, [bubbleConfig.enabled]);
+  }, [bubbleConfig.enabled, bubbleConfig.size]);
 
   const bubbleProvider = useMemo(() => {
     if (!bubbleConfig.enabled) return null;
@@ -498,6 +520,11 @@ function App() {
       setShowSettings(false);
     }
     setBubbleConfig(config);
+  }
+
+  function handleModeToggle() {
+    // 切换显示模式（卡片 ⇄ 悬浮球）
+    handleBubbleConfigChange({ ...bubbleConfig, enabled: !bubbleConfig.enabled });
   }
 
   function handleExpandFromBubble() {
@@ -561,12 +588,6 @@ function App() {
     ...channelList.map((c) => ({ value: c, label: c })),
   ];
 
-  function calcAvailability(timeline: TimelineItem[]): number {
-    if (!timeline || timeline.length === 0) return 0;
-    const total = timeline.reduce((sum, t) => sum + t.availability, 0);
-    return total / timeline.length;
-  }
-
   function renderTimeline(timeline: TimelineItem[]) {
     const recent = timeline.slice(-24);
     return (
@@ -605,6 +626,17 @@ function App() {
   return (
     <div className="card">
       <div className="filters">
+        <div className="mode-switch">
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={bubbleConfig.enabled}
+              onChange={handleModeToggle}
+            />
+            <span className="slider"></span>
+          </label>
+          <span className="mode-label">{bubbleConfig.enabled ? "悬浮球" : "卡片"}</span>
+        </div>
         <CustomSelect
           options={providerOptions}
           value={providerFilter}

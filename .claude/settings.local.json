@@ -7,7 +7,9 @@
       "Bash(pnpm add:*)",
       "Bash(CI=true pnpm install:*)",
       "Bash(cat:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "mcp__serena__list_dir",
+      "mcp__codex__codex"
     ]
   }
 }

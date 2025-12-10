@@ -578,6 +578,14 @@ input:checked + .slider:before {
   justify-content: center;
   padding: 0;
   margin: 0;
+  position: relative;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+/* 点击穿透：容器默认不接收事件 */
+.bubble-passthrough {
+  pointer-events: none;
 }
 
 /* 悬浮球 */
@@ -596,6 +604,11 @@ input:checked + .slider:before {
   position: relative;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* 悬浮球可交互：恢复事件接收 */
+.bubble-interactive {
+  pointer-events: auto;
 }
 
 .bubble:hover {
@@ -622,9 +635,9 @@ input:checked + .slider:before {
 .bubble-wave {
   position: absolute;
   top: var(--water-level, 50%);
-  left: -25%;
-  width: 150%;
-  height: 150%;
+  left: -10%;
+  width: 120%;
+  height: 120%;
   transition: top 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -712,3 +725,20 @@ input:checked + .slider:before {
 .bubble.down .bubble-availability {
   color: #fff;
 }
+
+/* 模式切换开关 */
+.mode-switch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+  padding-right: 6px;
+}
+
+.mode-label {
+  color: #9ca3af;
+  font-size: 11px;
+  min-width: 42px;
+  text-align: center;
+}
+
