@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { exit } from "@tauri-apps/plugin-process";
 import { load } from "@tauri-apps/plugin-store";
 import "./App.css";
 
@@ -138,8 +139,7 @@ function SettingsPage({ onBack, allProviders, bubbleConfig, onBubbleConfigChange
   const [loading, setLoading] = useState(true);
 
   async function handleClose() {
-    const win = getCurrentWindow();
-    await win.close();
+    await exit(0);
   }
 
   async function handleMinimize() {
@@ -605,11 +605,6 @@ function App() {
     await store.set("bubbleConfig", config);
   }
 
-  function handleModeToggle() {
-    // 切换显示模式（卡片 ⇄ 悬浮球）
-    handleBubbleConfigChange({ ...bubbleConfig, enabled: !bubbleConfig.enabled });
-  }
-
   function handleExpandFromBubble() {
     setBubbleConfig({ ...bubbleConfig, enabled: false });
   }
@@ -620,8 +615,7 @@ function App() {
   }
 
   async function handleClose() {
-    const win = getCurrentWindow();
-    await win.close();
+    await exit(0);
   }
 
   function handleProviderChange(value: string) {
@@ -719,17 +713,6 @@ function App() {
   return (
     <div className="card">
       <div className="filters">
-        <div className="mode-switch">
-          <label className="switch">
-            <input
-              type="checkbox"
-              checked={bubbleConfig.enabled}
-              onChange={handleModeToggle}
-            />
-            <span className="slider"></span>
-          </label>
-          <span className="mode-label">{bubbleConfig.enabled ? "悬浮球" : "卡片"}</span>
-        </div>
         <CustomSelect
           options={providerOptions}
           value={providerFilter}

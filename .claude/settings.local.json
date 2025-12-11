@@ -10,7 +10,9 @@
       "Bash(npx tsc:*)",
       "mcp__serena__list_dir",
       "mcp__codex__codex",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(cargo check:*)",
+      "Bash(pnpm tauri build:*)"
     ]
   }
 }
