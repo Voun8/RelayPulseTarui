@@ -137,6 +137,15 @@ function SettingsPage({ onBack, allProviders, bubbleConfig, onBubbleConfigChange
   const [interval, setIntervalValue] = useState(5);
   const [loading, setLoading] = useState(true);
 
+  async function handleClose() {
+    const win = getCurrentWindow();
+    await win.close();
+  }
+
+  async function handleMinimize() {
+    onBubbleConfigChange({ ...bubbleConfig, enabled: true });
+  }
+
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -223,6 +232,18 @@ function SettingsPage({ onBack, allProviders, bubbleConfig, onBubbleConfigChange
         <div className="settings-header">
           <button className="back-btn" onClick={onBack}>←</button>
           <span className="settings-title">设置</span>
+          <div className="window-controls">
+            <button className="window-btn minimize-btn" onClick={handleMinimize} title="最小化">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <rect x="2" y="5.5" width="8" height="1" rx="0.5" />
+              </svg>
+            </button>
+            <button className="window-btn close-btn" onClick={handleClose} title="关闭">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M2.22 2.22a.75.75 0 011.06 0L6 4.94l2.72-2.72a.75.75 0 111.06 1.06L7.06 6l2.72 2.72a.75.75 0 11-1.06 1.06L6 7.06 3.28 9.78a.75.75 0 01-1.06-1.06L4.94 6 2.22 3.28a.75.75 0 010-1.06z" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="settings-loading">加载中...</div>
       </div>
@@ -234,6 +255,18 @@ function SettingsPage({ onBack, allProviders, bubbleConfig, onBubbleConfigChange
       <div className="settings-header">
         <button className="back-btn" onClick={onBack}>←</button>
         <span className="settings-title">设置</span>
+        <div className="window-controls">
+          <button className="window-btn minimize-btn" onClick={handleMinimize} title="最小化">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <rect x="2" y="5.5" width="8" height="1" rx="0.5" />
+            </svg>
+          </button>
+          <button className="window-btn close-btn" onClick={handleClose} title="关闭">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2.22 2.22a.75.75 0 011.06 0L6 4.94l2.72-2.72a.75.75 0 111.06 1.06L7.06 6l2.72 2.72a.75.75 0 11-1.06 1.06L6 7.06 3.28 9.78a.75.75 0 01-1.06-1.06L4.94 6 2.22 3.28a.75.75 0 010-1.06z" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="settings-content">
         <div className="setting-item">
@@ -410,8 +443,54 @@ function App() {
     size: 120,
   });
 
-  // 用 ref 记录是否是首次渲染
-  const isFirstRender = useRef(true);
+  // 用 ref 记录是否已完成初始化加载
+  const isInitialized = useRef(false);
+
+  // 应用启动时从 store 加载 bubbleConfig 和窗口位置
+  useEffect(() => {
+    async function loadSavedState() {
+      const win = getCurrentWindow();
+      const { LogicalSize, LogicalPosition } = await import("@tauri-apps/api/dpi");
+      const store = await getStore();
+
+      // 加载保存的 bubbleConfig
+      const savedBubbleConfig = await store.get<BubbleConfig>("bubbleConfig");
+      if (savedBubbleConfig) {
+        setBubbleConfig(savedBubbleConfig);
+
+        // 根据保存的模式恢复窗口位置和大小
+        if (savedBubbleConfig.enabled) {
+          // 恢复悬浮球模式
+          const bubbleState = await store.get<{ x: number; y: number }>("bubbleWindowState");
+          await win.setSize(new LogicalSize(savedBubbleConfig.size, savedBubbleConfig.size));
+          await win.setSkipTaskbar(true);
+          if (bubbleState && bubbleState.x !== undefined && bubbleState.y !== undefined) {
+            await win.setPosition(new LogicalPosition(bubbleState.x, bubbleState.y));
+          }
+        } else {
+          // 恢复卡片模式
+          const cardState = await store.get<{ x: number; y: number; width: number; height: number }>("cardWindowState");
+          await win.setSkipTaskbar(false);
+          if (cardState && cardState.width && cardState.height) {
+            await win.setSize(new LogicalSize(cardState.width, cardState.height));
+            if (cardState.x !== undefined && cardState.y !== undefined) {
+              await win.setPosition(new LogicalPosition(cardState.x, cardState.y));
+            }
+          }
+        }
+      } else {
+        // 没有保存的配置，恢复卡片模式的位置（如果有）
+        const cardState = await store.get<{ x: number; y: number; width: number; height: number }>("cardWindowState");
+        if (cardState && cardState.x !== undefined && cardState.y !== undefined) {
+          await win.setPosition(new LogicalPosition(cardState.x, cardState.y));
+        }
+      }
+
+      isInitialized.current = true;
+    }
+
+    loadSavedState();
+  }, []);
 
   async function loadStatus() {
     setRefreshing(true);
@@ -439,8 +518,8 @@ function App() {
 
   // 监听 bubbleConfig.enabled 变化来调整窗口
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
+    // 等待初始化完成后才处理窗口变化
+    if (!isInitialized.current) {
       return;
     }
 
@@ -515,11 +594,15 @@ function App() {
     ) || null;
   }, [allProviders, bubbleConfig]);
 
-  function handleBubbleConfigChange(config: BubbleConfig) {
+  async function handleBubbleConfigChange(config: BubbleConfig) {
     if (config.enabled && !bubbleConfig.enabled) {
       setShowSettings(false);
     }
     setBubbleConfig(config);
+
+    // 保存 bubbleConfig 到 store
+    const store = await getStore();
+    await store.set("bubbleConfig", config);
   }
 
   function handleModeToggle() {
@@ -529,6 +612,16 @@ function App() {
 
   function handleExpandFromBubble() {
     setBubbleConfig({ ...bubbleConfig, enabled: false });
+  }
+
+  async function handleMinimize() {
+    // 最小化时切换到悬浮球模式
+    handleBubbleConfigChange({ ...bubbleConfig, enabled: true });
+  }
+
+  async function handleClose() {
+    const win = getCurrentWindow();
+    await win.close();
   }
 
   function handleProviderChange(value: string) {
@@ -660,6 +753,18 @@ function App() {
         </button>
         {lastUpdate && <span className="last-update">{lastUpdate}</span>}
         {refreshing && <div className="refresh-indicator"></div>}
+        <div className="window-controls">
+          <button className="window-btn minimize-btn" onClick={handleMinimize} title="最小化">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <rect x="2" y="5.5" width="8" height="1" rx="0.5" />
+            </svg>
+          </button>
+          <button className="window-btn close-btn" onClick={handleClose} title="关闭">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+              <path d="M2.22 2.22a.75.75 0 011.06 0L6 4.94l2.72-2.72a.75.75 0 111.06 1.06L7.06 6l2.72 2.72a.75.75 0 11-1.06 1.06L6 7.06 3.28 9.78a.75.75 0 01-1.06-1.06L4.94 6 2.22 3.28a.75.75 0 010-1.06z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="list">

@@ -369,6 +369,10 @@ body {
   flex-shrink: 0;
 }
 
+.settings-header .window-controls {
+  margin-left: auto;
+}
+
 .back-btn {
   -webkit-app-region: no-drag;
   background: rgba(30, 33, 40, 0.95);
@@ -740,5 +744,46 @@ input:checked + .slider:before {
   font-size: 11px;
   min-width: 42px;
   text-align: center;
+}
+
+/* 窗口控制按钮 */
+.window-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+  margin-left: 8px;
+}
+
+.window-btn {
+  background: rgba(30, 33, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #9ca3af;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.window-btn:hover {
+  background-color: rgba(40, 44, 52, 0.95);
+  border-color: rgba(165, 180, 252, 0.4);
+  color: #e5e7eb;
+}
+
+.minimize-btn:hover {
+  background-color: rgba(251, 191, 36, 0.2);
+  border-color: rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+
+.close-btn:hover {
+  background-color: rgba(248, 113, 113, 0.2);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #f87171;
 }
 
