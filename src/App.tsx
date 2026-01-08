@@ -496,8 +496,24 @@ function App() {
     setRefreshing(true);
     try {
       const resp: any = await invoke("fetch_status");
-      const data = resp.data;
-      setAllProviders(data);
+      const data = resp.data || [];
+      const groups = resp.groups || [];
+
+      // 转换 groups 数据格式以匹配 data 结构
+      const transformedGroups = groups.flatMap((g: any) => {
+        if (!g.layers || g.layers.length === 0) return [];
+        // 取第一个 layer 作为代表
+        const layer = g.layers[0];
+        return {
+          provider: g.provider,
+          service: g.service,
+          channel: g.channel,
+          current_status: layer.current_status,
+          timeline: layer.timeline || [],
+        };
+      });
+
+      setAllProviders([...data, ...transformedGroups]);
       setLoading(false);
       setLastUpdate(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
     } catch (e) {

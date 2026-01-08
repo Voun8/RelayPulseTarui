@@ -12,7 +12,13 @@
       "mcp__codex__codex",
       "Bash(find:*)",
       "Bash(cargo check:*)",
-      "Bash(pnpm tauri build:*)"
+      "Bash(pnpm tauri build:*)",
+      "Bash(ie4uinit.exe -show)",
+      "Bash(xxd:*)",
+      "Bash(powershell -c \"[System.BitConverter]::ToString((Get-Content ''C:\\Users\\liyiyang\\Desktop\\RelayPulse\\src-tauri\\icons\\icon.ico'' -Encoding Byte -TotalCount 32))\")",
+      "WebFetch(domain:relaypulse.top)",
+      "Bash(curl:*)",
+      "Bash(python3:*)"
     ]
   }
 }
